@@ -36,7 +36,7 @@ def main():
     obj2 = OBJ(os.path.join(dir_name, 'models/rat.obj'), swapyz=True)
     obj = OBJ(os.path.join(dir_name, 'models/fox.obj'), swapyz=True)
     # init video capture
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(0)
 
     while True:
         # read the current frame
@@ -49,7 +49,8 @@ def main():
         aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
         parameters = aruco.DetectorParameters_create()
         corners, ids, rejectedImgPoints = aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
-        frame = aruco.drawDetectedMarkers(frame.copy(), corners, ids)
+        sm = moveModel(frame, (135, 150, 110), corners)
+        #frame = aruco.drawDetectedMarkers(frame.copy(), corners, ids)
 
         if corners:
             '''for i in range(len(ids)):
@@ -65,7 +66,7 @@ def main():
             src_pts = np.array([[0,0], [0, 200], [200, 200], [200, 0]]).reshape(-1,1,2)
             dst_pts = []
             for i in corners[0][0]:
-                dst_pts.append([i[0], i[1]])
+                dst_pts.append([i[0] + sm[0], i[1] + sm[1]])
             dst_pts = np.array(dst_pts).reshape(-1,1,2)
             homography, mask = cv2.findHomography(src_pts, dst_pts)
             #print(homography)
@@ -77,6 +78,7 @@ def main():
 
 
         #cv2.imshow('frame2', frame2)
+        #cv2.imshow('mask', mask)
         cv2.imshow('frame', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
@@ -127,6 +129,31 @@ def get_extended_RT(A, H):
     R_T[:, 3] = T
     return R_T
 
+def moveModel(frame, color, corners):
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    low = np.array([i - 50 for i in color])
+    up = np.array([i + 50 for i in color])
+    mask = cv2.inRange(hsv, low, up)
+    edged, cnts = cv2.findContours(mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    edged = sorted(edged, key=cv2.contourArea, reverse=True)
+
+    if len(edged) > 0 and len(corners) > 0:
+        rect = cv2.minAreaRect(edged[0])
+        box = cv2.boxPoints(rect)
+        box = np.int0(box)
+        box = box.T
+        x0 = sum(box[0]) // 4
+        y0 = sum(box[1]) // 4
+        cv2.circle(frame, (x0, y0), 10, (255, 0, 0), 10)
+        x1 = int(sum(corners[0][0][:, 0]) // 4)
+        y1 = int(sum(corners[0][0][:, 1]) // 4)
+        cv2.circle(frame, (x1, y1), 10, (255, 0, 0), 10)
+        ny = y0 - y1
+        nx = x0 - x1
+    else:
+        ny, nx = 0, 0
+    return (nx, ny)
+
 def render(img, obj, projection, color=False):
     """
     Render a loaded obj model into the current video frame
@@ -141,7 +168,8 @@ def render(img, obj, projection, color=False):
         points = np.dot(points, scale_matrix)
         # render model in the middle of the reference surface. To do so,
         # model points must be displaced
-        points = np.array([[p[0] + w / 2 + 100, p[1] + h / 2, p[2]] for p in points])
+        points = np.array([[p[0] + w / 2, p[1] + h / 2, p[2]] for p in points])
+        #points = np.array([[p[0] + sm[0],  p[1] + sm[1], p[2]] for p in points])
         dst = cv2.perspectiveTransform(points.reshape(-1, 1, 3), projection)
         imgpts = np.int32(dst)
         if color is False:
