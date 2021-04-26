@@ -27,7 +27,7 @@ while True:
     upper2 = np.array((h2, s2, v2), np.uint8)
 
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    mask = cv2.inRange(frame, lower2, upper2)
+    mask = cv2.inRange(hsv, lower2, upper2)
 
     cv2.imshow('mask', mask)
     cv2.imshow('frame', frame)

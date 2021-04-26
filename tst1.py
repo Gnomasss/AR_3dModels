@@ -22,7 +22,7 @@ def get_frame(cap, scaling_factor):
     return frame
 
 # Check communication
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 scaling_factor = 0.5
 
 print("Press [ESC] to close the application")
@@ -45,11 +45,13 @@ while True:
         # It is important to note that the center of the marker corresponds to the origin and we must therefore move 0.5 away from the origin
         axis = np.float32([[-0.5, -0.5, 0], [-0.5, 0.5, 0], [0.5, 0.5, 0], [0.5, -0.5, 0],
                            [-0.5, -0.5, 1], [-0.5, 0.5, 1], [0.5, 0.5, 1], [0.5, -0.5, 1]])
+        '''axis = np.float32([[-1, -1, 0], [-1, 1, 0], [1, 1, 0], [1, -1, 0],
+                           [-1, -1, 1], [-1, 1, 1], [1, 1, 1], [1, -1, 1]])'''
         # Now we transform the cube to the marker position and project the resulting points into 2d
         imgpts, jac = cv2.projectPoints(axis, rvecs, tvecs, mtx, dist)
         print(jac)
         imgpts = np.int32(imgpts).reshape(-1, 2)
-
+        print(imgpts)
         # Now comes the drawing.
         # In this example, I would like to draw the cube so that the walls also get a painted
         # First create six copies of the original picture (for each side of the cube one)

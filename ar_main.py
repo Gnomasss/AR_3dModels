@@ -15,6 +15,10 @@ import os
 from objloader_simple import *
 from cv2 import aruco
 
+from createProjectionMatrix import ProjMatr
+
+Mat = ProjMatr()
+
 # Minimum number of matches that have to be found
 # to consider the recognition valid
 MIN_MATCHES = 10
@@ -49,7 +53,11 @@ def main():
         aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
         parameters = aruco.DetectorParameters_create()
         corners, ids, rejectedImgPoints = aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
-        sm = moveModel(frame, (135, 150, 110), corners)
+        res = aruco.detectMarkers(gray, aruco.getPredefinedDictionary(aruco.DICT_6X6_250))
+        for i in range(len(res[0])):
+            rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers(res[0][i], 1, mtx, dist)
+            #sm = moveModel(frame, (135, 150, 110), corners)
+            sm = moveModel2(frame, (135, 156, 118), corners, tvecs, rvecs)
         #frame = aruco.drawDetectedMarkers(frame.copy(), corners, ids)
 
         if corners:
@@ -71,7 +79,7 @@ def main():
             homography, mask = cv2.findHomography(src_pts, dst_pts)
             #print(homography)
             R_T = get_extended_RT(camera_parameters, homography)
-            print('aaaa',R_T)
+            #print('aaaa',R_T)
             transformation = camera_parameters.dot(R_T)
             frame = render(frame, obj, transformation, False)
 
@@ -150,6 +158,52 @@ def moveModel(frame, color, corners):
         cv2.circle(frame, (x1, y1), 10, (255, 0, 0), 10)
         ny = y0 - y1
         nx = x0 - x1
+    else:
+        ny, nx = 0, 0
+    return (nx, ny)
+
+def moveModel2(frame, color, corners, tvecs, rvecs):
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    #low = np.array([i - 50 for i in color])
+    #up = np.array([i + 50 for i in color])
+    low = np.array([0, 158, 70])
+    up = np.array([79, 255, 255])
+    mask = cv2.inRange(hsv, low, up)
+    h, w = frame.shape[:2]
+    edged, cnts = cv2.findContours(mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    edged = sorted(edged, key=cv2.contourArea, reverse=True)
+    points = Mat.ProjectPoints(frame, 10, 50, tvecs, rvecs, mtx, dist)
+    #print('tut1')
+    if len(edged) > 0 and len(corners) > 0:
+        rect = cv2.minAreaRect(edged[0])
+        box = cv2.boxPoints(rect)
+        box = np.int0(box)
+        box = box.T
+        xp = sum(box[0]) // 4
+        yp = sum(box[1]) // 4
+        mn = int(100000000)
+        x0 = 0
+        y0 = 0
+        #print(len(points))
+        for i in points:
+            #print(i)
+            if (i[0] - xp) ** 2 + (i[1] - yp) ** 2 < mn:
+                mn = (i[0] - xp) ** 2 + (i[1] - yp) ** 2
+                x0 = i[0]
+                y0 = i[1]
+        #print('tut2', x0, y0, w, h)
+        if abs(x0) < w and abs(y0) < h and x0 > -200000:
+            #print('wtf', abs(x0) < w, abs(y0) < h, abs(x0))
+            cv2.circle(frame, (x0, y0), 10, (255, 0, 0), 10)
+            x1 = int(sum(corners[0][0][:, 0]) // 4)
+            y1 = int(sum(corners[0][0][:, 1]) // 4)
+            cv2.circle(frame, (x1, y1), 10, (255, 0, 0), 10)
+            ny = y0 - y1
+            nx = x0 - x1
+        else:
+            ny = 0
+            nx = 0
+        #print(nx, ny)
     else:
         ny, nx = 0, 0
     return (nx, ny)
