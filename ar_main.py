@@ -53,16 +53,18 @@ def main():
         aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
         parameters = aruco.DetectorParameters_create()
         corners, ids, rejectedImgPoints = aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
-        res = aruco.detectMarkers(gray, aruco.getPredefinedDictionary(aruco.DICT_6X6_250))
-        for i in range(len(res[0])):
+        #res = aruco.detectMarkers(gray, aruco.getPredefinedDictionary(aruco.DICT_6X6_250))
+        '''for i in range(len(res[0])):
+            print(res[0][i])
             rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers(res[0][i], 1, mtx, dist)
+            #print(i, rvecs, tvecs)
             #sm = moveModel(frame, (135, 150, 110), corners)
             sm = moveModel2(frame, (135, 156, 118), corners, tvecs, rvecs)
-        #frame = aruco.drawDetectedMarkers(frame.copy(), corners, ids)
+        #frame = aruco.drawDetectedMarkers(frame.copy(), corners, ids)'''
 
         if corners:
             '''for i in range(len(ids)):
-                rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers(np.array([corners[0][i]]), 1, mtx, dist)
+                rvecs, tvecs, _ 1.27= aruco.estimatePoseSingleMarkers(np.array([corners[0][i]]), 1, mtx, dist)
                 #print('----------------------')
                 H = mtx @ (rvecs[0].T @ rvecs[0])
                 #print(mtx @ (tvecs[0].T @ rvecs[0]))
@@ -73,7 +75,32 @@ def main():
 
             src_pts = np.array([[0,0], [0, 200], [200, 200], [200, 0]]).reshape(-1,1,2)
             dst_pts = []
-            for i in corners[0][0]:
+            avCorn = [[0] * 2 for i in range(4)]
+            k = 0
+            #print(corners[0][0])
+            for i in range(len(corners)):
+                k += 1
+                for j in range(4):
+                    avCorn[j][0] += corners[i][0][j][0]
+                    avCorn[j][1] += corners[i][0][j][1]
+                    #cv2.circle(frame, (corners[i][0][j][0], corners[i][0][j][1]), 1, (255 * (j % 3 == 0),255 * (j % 2 == 0),255), 10)
+            for i in range(len(avCorn)):
+                avCorn[i][0] = avCorn[i][0] // k
+                avCorn[i][1] = avCorn[i][1] // k
+
+            '''for i in avCorn:
+                
+                cv2.circle(frame, (i[0], i[1]), 1, (255, 0, 125), 10)'''
+            '''for i in corners[0][0]:
+                dst_pts.append([i[0] + sm[0], i[1] + sm[1]])'''
+            rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers(np.array([avCorn]), 1, mtx, dist)
+            for i in range(len(avCorn)):
+                avCorn[i][0] = int(avCorn[i][0])
+                avCorn[i][1] = int(avCorn[i][1])
+            sm = moveModel2(frame, (135, 156, 118), np.array(avCorn), tvecs, rvecs)
+            print(np.array([avCorn]))
+            print('-----------------')
+            for i in avCorn:
                 dst_pts.append([i[0] + sm[0], i[1] + sm[1]])
             dst_pts = np.array(dst_pts).reshape(-1,1,2)
             homography, mask = cv2.findHomography(src_pts, dst_pts)
@@ -166,9 +193,10 @@ def moveModel2(frame, color, corners, tvecs, rvecs):
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     #low = np.array([i - 50 for i in color])
     #up = np.array([i + 50 for i in color])
-    low = np.array([0, 158, 70])
-    up = np.array([79, 255, 255])
+    low = np.array([51, 88, 77])
+    up = np.array([95, 255, 255])
     mask = cv2.inRange(hsv, low, up)
+    cv2.imshow('mask', mask)
     h, w = frame.shape[:2]
     edged, cnts = cv2.findContours(mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     edged = sorted(edged, key=cv2.contourArea, reverse=True)
@@ -194,10 +222,10 @@ def moveModel2(frame, color, corners, tvecs, rvecs):
         #print('tut2', x0, y0, w, h)
         if abs(x0) < w and abs(y0) < h and x0 > -200000:
             #print('wtf', abs(x0) < w, abs(y0) < h, abs(x0))
-            cv2.circle(frame, (x0, y0), 10, (255, 0, 0), 10)
-            x1 = int(sum(corners[0][0][:, 0]) // 4)
-            y1 = int(sum(corners[0][0][:, 1]) // 4)
-            cv2.circle(frame, (x1, y1), 10, (255, 0, 0), 10)
+            cv2.circle(frame, (x0, y0), 10, (0, 255, 0), 10)
+            x1 = int(sum(corners[:, 0]) // 4)
+            y1 = int(sum(corners[:, 1]) // 4)
+            cv2.circle(frame, (x1, y1), 10, (0, 0, 255), 10)
             ny = y0 - y1
             nx = x0 - x1
         else:
