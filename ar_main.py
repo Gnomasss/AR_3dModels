@@ -23,11 +23,12 @@ Mat = ProjMatr()
 # to consider the recognition valid
 MIN_MATCHES = 10
 DEFAULT_COLOR = (0, 0, 0)
+flFirst = True
 calibration_path = "realsense_d435.npz"
 with np.load(calibration_path) as X:
     mtx, dist, _, _ = [X[i] for i in ('mtx', 'dist', 'rvecs', 'tvecs')]
-
 def main():
+    global flFirst
     """
     This functions loads the target surface image,
     """
@@ -94,9 +95,21 @@ def main():
             '''for i in corners[0][0]:
                 dst_pts.append([i[0] + sm[0], i[1] + sm[1]])'''
             rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers(np.array([avCorn]), 1, mtx, dist)
+
             for i in range(len(avCorn)):
                 avCorn[i][0] = int(avCorn[i][0])
                 avCorn[i][1] = int(avCorn[i][1])
+
+            if flFirst:
+                avCornOld = avCorn.copy()
+                flFirst = False
+            else:
+                for i in range(len(avCorn)):
+                    for j in range(2):
+                        if abs(avCorn[i][j] - avCornOld[i][j]) <= 5:
+                            avCorn[i][j] = avCornOld[i][j]
+                avCornOld = avCorn.copy()
+
             sm = moveModel2(frame, (135, 156, 118), np.array(avCorn), tvecs, rvecs)
             print(np.array([avCorn]))
             print('-----------------')
