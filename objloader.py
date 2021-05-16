@@ -37,6 +37,7 @@ class OBJ:
         self.normals = []
         self.texcoords = []
         self.faces = []
+
         material = None
         for line in open(filename, "r"):
             if line.startswith('#'): continue
@@ -53,11 +54,11 @@ class OBJ:
                     v = v[0], v[2], v[1]
                 self.normals.append(v)
             elif values[0] == 'vt':
-                self.texcoords.append(map(float, values[1:3]))
-            #elif values[0] in ('usemtl', 'usemat'):
-                #material = values[1]
-            #elif values[0] == 'mtllib':
-                #self.mtl = MTL(values[1])
+                self.texcoords.append(list(map(float, values[1:3])))
+            elif values[0] in ('usemtl', 'usemat'):
+                material = values[1]
+            elif values[0] == 'mtllib':
+                self.mtl = MTL(values[1])
             elif values[0] == 'f':
                 face = []
                 texcoords = []
@@ -73,5 +74,31 @@ class OBJ:
                         norms.append(int(w[2]))
                     else:
                         norms.append(0)
-                #self.faces.append((face, norms, texcoords, material))
-                self.faces.append((face, norms, texcoords))
+                self.faces.append((face, norms, texcoords, material))
+
+        self.gl_list = glGenLists(1)
+        glNewList(self.gl_list, GL_COMPILE)
+        # glEnable(GL_TEXTURE_2D)
+        glFrontFace(GL_CCW)
+        for face in self.faces:
+            vertices, normals, texture_coords, material = face
+
+            mtl = self.mtl[material]
+            if 'texture_Kd' in mtl:
+                # use diffuse texmap
+                glBindTexture(GL_TEXTURE_2D, mtl['texture_Kd'])
+            else:
+                # just use diffuse colour
+                glColor(*mtl['Kd'])
+
+            glBegin(GL_POLYGON)
+            
+            for i in range(len(vertices)):
+                if normals[i] > 0:
+                    glNormal3fv(self.normals[normals[i] - 1])
+                if texture_coords[i] > 0:
+                    glTexCoord2fv(self.texcoords[texture_coords[i] - 1])
+                glVertex3fv(self.vertices[vertices[i] - 1])
+            glEnd()
+        # glDisable(GL_TEXTURE_2D)
+        glEndList()

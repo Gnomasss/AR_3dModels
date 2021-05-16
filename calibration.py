@@ -39,7 +39,7 @@ print(
     "1. Move the grid from calibration directory a little bit in front of the camera and press [r] to make a record (if auto record is not set to True)")
 print("2. Finish this task and start calculation press [c]")
 print("3. Interrupt application [ESC]")
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 scaling_factor = 0.5
 while True:
     # Get frame from realsense and convert to grayscale image

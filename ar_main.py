@@ -1,8 +1,5 @@
 
-# Useful links
-# http://www.pygame.org/wiki/OBJFileLoader
-# https://rdmilligan.wordpress.com/2015/10/15/augmented-reality-using-opencv-opengl-and-blender/
-# https://clara.io/library
+
 
 
 
@@ -19,14 +16,14 @@ from createProjectionMatrix import ProjMatr
 
 Mat = ProjMatr()
 
-# Minimum number of matches that have to be found
-# to consider the recognition valid
+
 MIN_MATCHES = 10
 DEFAULT_COLOR = (0, 0, 0)
 flFirst = True
 calibration_path = "realsense_d435.npz"
 with np.load(calibration_path) as X:
     mtx, dist, _, _ = [X[i] for i in ('mtx', 'dist', 'rvecs', 'tvecs')]
+print(mtx)
 def main():
     global flFirst
     """
@@ -38,8 +35,8 @@ def main():
 
     dir_name = os.getcwd()
 
-    obj2 = OBJ(os.path.join(dir_name, 'models/rat.obj'), swapyz=True)
-    obj = OBJ(os.path.join(dir_name, 'models/fox.obj'), swapyz=True)
+    obj2 = OBJ(os.path.join(dir_name, 'models1/rat.obj'), swapyz=True)
+    obj = OBJ(os.path.join(dir_name, 'models1/fox.obj'), swapyz=True)
     # init video capture
     cap = cv2.VideoCapture(0)
 
@@ -96,6 +93,10 @@ def main():
                 dst_pts.append([i[0] + sm[0], i[1] + sm[1]])'''
             rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers(np.array([avCorn]), 1, mtx, dist)
 
+            rvecsMat, _ = cv2.Rodrigues(rvecs)
+            print('-----------')
+            print(rvecs, tvecs)
+            print(rvecsMat)
             for i in range(len(avCorn)):
                 avCorn[i][0] = int(avCorn[i][0])
                 avCorn[i][1] = int(avCorn[i][1])
@@ -111,8 +112,9 @@ def main():
                 avCornOld = avCorn.copy()
 
             sm = moveModel2(frame, (135, 156, 118), np.array(avCorn), tvecs, rvecs)
-            print(np.array([avCorn]))
-            print('-----------------')
+            #print(np.array([avCorn]))
+            #print('-----------------')
+
             for i in avCorn:
                 dst_pts.append([i[0] + sm[0], i[1] + sm[1]])
             dst_pts = np.array(dst_pts).reshape(-1,1,2)
@@ -121,6 +123,7 @@ def main():
             R_T = get_extended_RT(camera_parameters, homography)
             #print('aaaa',R_T)
             transformation = camera_parameters.dot(R_T)
+            print(R_T)
             frame = render(frame, obj, transformation, False)
 
 
@@ -137,21 +140,7 @@ def main():
     return 0
 
 
-def glyp(rvecs, tvecs):
-    INVERSE_MATRIX = np.array([[1.0, 1.0, 1.0, 1.0],
-                               [-1.0, -1.0, -1.0, -1.0],
-                               [-1.0, -1.0, -1.0, -1.0],
-                               [1.0, 1.0, 1.0, 1.0]])
-    tvecs = tvecs[0][0]
-    rmtx = cv2.Rodrigues(rvecs)[0]
-    view_matrix = np.array([[rmtx[0][0], rmtx[0][1], rmtx[0][2], tvecs[0]],
-                            [rmtx[1][0], rmtx[1][1], rmtx[1][2], tvecs[1]],
-                            [rmtx[2][0], rmtx[2][1], rmtx[2][2], tvecs[2]],
-                            [0.0, 0.0, 0.0, 1.0]])
-    view_matrix = view_matrix * INVERSE_MATRIX
 
-    view_matrix = np.transpose(view_matrix)
-    return view_matrix
 
 def get_extended_RT(A, H):
     # finds r3 and appends
@@ -159,7 +148,7 @@ def get_extended_RT(A, H):
     H = np.float64(H)  # for better precision
     A = np.float64(A)
     R_12_T = np.linalg.inv(A).dot(H)
-
+    #print(R_12_T)
     r1 = np.float64(R_12_T[:, 0])  # col1
     r2 = np.float64(R_12_T[:, 1])  # col2
     T = R_12_T[:, 2]  # translation
